@@ -1,20 +1,23 @@
+import { Box, Cylinder, Sphere } from "@react-three/drei";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type * as THREE from "three";
 
 type GameState = "idle" | "running" | "dead";
 
-const CANVAS_W = 600;
-const CANVAS_H = 220;
-const GROUND_Y = 160;
-const CHAR_X = 80;
-const CHAR_W = 44;
-const CHAR_H = 44;
-const GRAVITY = 0.55;
-const JUMP_VEL = -13;
-const OBS_W = 32;
-const OBS_H = 44;
-const BASE_SPEED = 4;
+const CHAR_X = -3;
+const BASE_SPEED = 8;
+const GRAVITY = -20;
+const JUMP_VEL = 9;
+
+const GROUND_TILE_KEYS = Array.from(
+  { length: 12 },
+  (_, i) => `ground-tile-${i}`,
+);
+const MOUNTAIN_POSITIONS = [-8, -4, 0, 4, 8, 12] as const;
 
 interface Obstacle {
+  id: number;
   x: number;
 }
 
@@ -27,37 +30,213 @@ interface GameData {
   bestScore: number;
   frameCount: number;
   speed: number;
+  nextId: number;
+  spawnTimer: number;
+}
+
+function Lion({ y }: { y: number }) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame(() => {
+    if (ref.current) {
+      ref.current.position.y = y;
+      ref.current.rotation.z = y > 0.05 ? -0.3 : 0;
+    }
+  });
+  return (
+    <group ref={ref} position={[CHAR_X, 0, 0]}>
+      <Box args={[0.7, 0.7, 0.7]} castShadow>
+        <meshStandardMaterial color="#e8a030" />
+      </Box>
+      <Sphere args={[0.42, 16, 16]} position={[0.3, 0.55, 0]} castShadow>
+        <meshStandardMaterial color="#e8a030" />
+      </Sphere>
+      <Sphere args={[0.5, 16, 16]} position={[0.25, 0.55, 0]}>
+        <meshStandardMaterial color="#c06010" />
+      </Sphere>
+      <Sphere args={[0.07, 8, 8]} position={[0.65, 0.65, 0.22]}>
+        <meshStandardMaterial color="#111" />
+      </Sphere>
+      <Sphere args={[0.07, 8, 8]} position={[0.65, 0.65, -0.22]}>
+        <meshStandardMaterial color="#111" />
+      </Sphere>
+      <Cylinder
+        args={[0.05, 0.05, 0.8, 8]}
+        position={[-0.6, 0.2, 0]}
+        rotation={[0, 0, 0.8]}
+      >
+        <meshStandardMaterial color="#c06010" />
+      </Cylinder>
+    </group>
+  );
+}
+
+function Cactus({ x }: { x: number }) {
+  return (
+    <group position={[x, 0.7, 0]}>
+      <Cylinder args={[0.18, 0.18, 1.4, 8]} castShadow>
+        <meshStandardMaterial color="#3a8a3a" />
+      </Cylinder>
+      <Cylinder
+        args={[0.12, 0.12, 0.6, 8]}
+        position={[-0.32, 0.1, 0]}
+        rotation={[0, 0, Math.PI / 2]}
+        castShadow
+      >
+        <meshStandardMaterial color="#3a8a3a" />
+      </Cylinder>
+      <Cylinder
+        args={[0.12, 0.12, 0.4, 8]}
+        position={[-0.62, 0.3, 0]}
+        castShadow
+      >
+        <meshStandardMaterial color="#3a8a3a" />
+      </Cylinder>
+      <Cylinder
+        args={[0.12, 0.12, 0.6, 8]}
+        position={[0.32, 0.0, 0]}
+        rotation={[0, 0, -Math.PI / 2]}
+        castShadow
+      >
+        <meshStandardMaterial color="#3a8a3a" />
+      </Cylinder>
+      <Cylinder
+        args={[0.12, 0.12, 0.35, 8]}
+        position={[0.62, 0.2, 0]}
+        castShadow
+      >
+        <meshStandardMaterial color="#3a8a3a" />
+      </Cylinder>
+    </group>
+  );
+}
+
+function Ground() {
+  const tilesRef = useRef<THREE.Group>(null);
+  const offsetRef = useRef(0);
+  useFrame((_, delta) => {
+    offsetRef.current = (offsetRef.current + delta * 5) % 4;
+    if (tilesRef.current) tilesRef.current.position.x = -offsetRef.current;
+  });
+  return (
+    <group ref={tilesRef}>
+      {GROUND_TILE_KEYS.map((key, i) => (
+        <Box
+          key={key}
+          args={[4, 0.3, 6]}
+          position={[i * 4 - 8, -0.15, 0]}
+          receiveShadow
+        >
+          <meshStandardMaterial color={i % 2 === 0 ? "#5aaa30" : "#4e9828"} />
+        </Box>
+      ))}
+    </group>
+  );
+}
+
+function Mountains() {
+  return (
+    <group position={[0, 0, -5]}>
+      {MOUNTAIN_POSITIONS.map((x, i) => (
+        <Cylinder
+          key={`mountain-${x}`}
+          args={[0, 2 + (i % 3), 4 + (i % 2) * 2, 5]}
+          position={[x, 1, 0]}
+        >
+          <meshStandardMaterial
+            color={`hsl(${120 + i * 10}, 40%, ${30 + i * 3}%)`}
+          />
+        </Cylinder>
+      ))}
+    </group>
+  );
+}
+
+function GameScene({
+  gameRef,
+  onScore,
+  onStateChange,
+}: {
+  gameRef: React.MutableRefObject<GameData>;
+  onScore: (s: number) => void;
+  onStateChange: (s: GameState) => void;
+}) {
+  useFrame((_, delta) => {
+    const g = gameRef.current;
+    if (g.state !== "running") return;
+    g.velY += GRAVITY * delta;
+    g.charY += g.velY * delta;
+    if (g.charY <= 0) {
+      g.charY = 0;
+      g.velY = 0;
+    }
+    g.speed = BASE_SPEED + g.score * 0.004;
+    g.spawnTimer -= delta;
+    const minInterval = Math.max(0.9, 2.0 - g.score * 0.001);
+    if (g.spawnTimer <= 0) {
+      g.obstacles.push({ id: g.nextId++, x: 14 });
+      g.spawnTimer = minInterval + Math.random() * 0.8;
+    }
+    for (const obs of g.obstacles) obs.x -= g.speed * delta;
+    g.obstacles = g.obstacles.filter((o) => o.x > -6);
+    for (const obs of g.obstacles) {
+      const dx = Math.abs(obs.x - CHAR_X);
+      const dy = g.charY;
+      if (dx < 0.7 && dy < 1.0) {
+        g.state = "dead";
+        if (g.score > g.bestScore) g.bestScore = g.score;
+        onStateChange("dead");
+        return;
+      }
+    }
+    g.score++;
+    if (g.score % 10 === 0) onScore(g.score);
+  });
+  const g = gameRef.current;
+  return (
+    <>
+      <Ground />
+      <Mountains />
+      <Lion y={g.charY} />
+      {g.obstacles.map((obs) => (
+        <Cactus key={obs.id} x={obs.x} />
+      ))}
+    </>
+  );
 }
 
 export function JungleJump() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<GameData>({
     state: "idle",
-    charY: GROUND_Y,
+    charY: 0,
     velY: 0,
     obstacles: [],
     score: 0,
     bestScore: 0,
     frameCount: 0,
     speed: BASE_SPEED,
+    nextId: 0,
+    spawnTimer: 2,
   });
-  const rafRef = useRef<number>(0);
   const [displayScore, setDisplayScore] = useState(0);
   const [displayBest, setDisplayBest] = useState(0);
   const [gameState, setGameState] = useState<GameState>("idle");
+  const [, forceUpdate] = useState(0);
 
   const jump = useCallback(() => {
     const g = gameRef.current;
     if (g.state === "idle" || g.state === "dead") {
       g.state = "running";
-      g.charY = GROUND_Y;
+      g.charY = 0;
       g.velY = JUMP_VEL;
       g.obstacles = [];
       g.score = 0;
       g.frameCount = 0;
       g.speed = BASE_SPEED;
+      g.spawnTimer = 2;
+      setDisplayScore(0);
       setGameState("running");
-    } else if (g.state === "running" && g.charY >= GROUND_Y) {
+      forceUpdate((n) => n + 1);
+    } else if (g.state === "running" && g.charY <= 0.05) {
       g.velY = JUMP_VEL;
     }
   }, []);
@@ -73,212 +252,70 @@ export function JungleJump() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [jump]);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const drawScene = () => {
-      const g = gameRef.current;
-
-      // Sky gradient
-      const sky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-      sky.addColorStop(0, "#b8f0ff");
-      sky.addColorStop(1, "#e0ffd8");
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-      // Sun
-      ctx.beginPath();
-      ctx.arc(540, 38, 28, 0, Math.PI * 2);
-      ctx.fillStyle = "#FFE066";
-      ctx.fill();
-      ctx.strokeStyle = "#FFB800";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // Clouds
-      const drawCloud = (x: number, y: number) => {
-        ctx.fillStyle = "rgba(255,255,255,0.85)";
-        ctx.beginPath();
-        ctx.arc(x, y, 18, 0, Math.PI * 2);
-        ctx.arc(x + 22, y - 8, 22, 0, Math.PI * 2);
-        ctx.arc(x + 44, y, 16, 0, Math.PI * 2);
-        ctx.fill();
-      };
-      const cloudOffset = (g.frameCount * 0.5) % CANVAS_W;
-      drawCloud(120 - cloudOffset, 40);
-      drawCloud(380 - cloudOffset + CANVAS_W, 55);
-
-      // Ground
-      ctx.fillStyle = "#6DBE45";
-      ctx.fillRect(
-        0,
-        GROUND_Y + CHAR_H,
-        CANVAS_W,
-        CANVAS_H - GROUND_Y - CHAR_H,
-      );
-      ctx.fillStyle = "#8BD45A";
-      ctx.fillRect(0, GROUND_Y + CHAR_H, CANVAS_W, 8);
-
-      // Character
-      ctx.font = `${CHAR_W}px serif`;
-      ctx.textBaseline = "top";
-      ctx.fillText("🦁", CHAR_X, g.charY);
-
-      // Obstacles
-      for (const obs of g.obstacles) {
-        ctx.font = `${OBS_H}px serif`;
-        ctx.fillText("🌵", obs.x, GROUND_Y + CHAR_H - OBS_H);
-      }
-
-      // Score
-      ctx.font = "bold 20px 'Bricolage Grotesque', sans-serif";
-      ctx.fillStyle = "#333";
-      ctx.textBaseline = "top";
-      ctx.fillText(`Score: ${g.score}`, 12, 12);
-      ctx.fillText(`Best: ${g.bestScore}`, 12, 38);
-
-      // Overlays
-      if (g.state === "idle") {
-        ctx.fillStyle = "rgba(0,0,0,0.35)";
-        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-        ctx.font = "bold 32px 'Bricolage Grotesque', sans-serif";
-        ctx.fillStyle = "#fff";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("🦁 Jungle Jump!", CANVAS_W / 2, CANVAS_H / 2 - 28);
-        ctx.font = "22px 'Figtree', sans-serif";
-        ctx.fillText(
-          "TAP or press SPACE to Start",
-          CANVAS_W / 2,
-          CANVAS_H / 2 + 14,
-        );
-        ctx.textAlign = "left";
-      } else if (g.state === "dead") {
-        ctx.fillStyle = "rgba(0,0,0,0.45)";
-        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-        ctx.font = "bold 30px 'Bricolage Grotesque', sans-serif";
-        ctx.fillStyle = "#FF6B6B";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("💥 Game Over!", CANVAS_W / 2, CANVAS_H / 2 - 30);
-        ctx.font = "22px 'Figtree', sans-serif";
-        ctx.fillStyle = "#fff";
-        ctx.fillText(
-          `Score: ${g.score}  Best: ${g.bestScore}`,
-          CANVAS_W / 2,
-          CANVAS_H / 2 + 8,
-        );
-        ctx.font = "18px 'Figtree', sans-serif";
-        ctx.fillText(
-          "TAP or press SPACE to Restart",
-          CANVAS_W / 2,
-          CANVAS_H / 2 + 38,
-        );
-        ctx.textAlign = "left";
-      }
-    };
-
-    const gameLoop = () => {
-      const g = gameRef.current;
-
-      if (g.state === "running") {
-        // Physics
-        g.velY += GRAVITY;
-        g.charY += g.velY;
-        if (g.charY >= GROUND_Y) {
-          g.charY = GROUND_Y;
-          g.velY = 0;
-        }
-
-        // Speed up over time
-        g.speed = BASE_SPEED + g.score * 0.003;
-
-        // Spawn obstacles
-        g.frameCount++;
-        const spawnInterval = Math.max(60, 120 - g.score * 0.5);
-        if (
-          g.frameCount % Math.floor(spawnInterval) === 0 &&
-          (g.obstacles.length === 0 ||
-            g.obstacles[g.obstacles.length - 1].x < CANVAS_W - 180)
-        ) {
-          g.obstacles.push({ x: CANVAS_W + 20 });
-        }
-
-        // Move obstacles
-        for (const obs of g.obstacles) {
-          obs.x -= g.speed;
-        }
-        g.obstacles = g.obstacles.filter((o) => o.x > -OBS_W - 10);
-
-        // Collision
-        for (const obs of g.obstacles) {
-          const obsLeft = obs.x + 6;
-          const obsRight = obs.x + OBS_W - 6;
-          const obsTop = GROUND_Y + CHAR_H - OBS_H + 6;
-          const charLeft = CHAR_X + 6;
-          const charRight = CHAR_X + CHAR_W - 6;
-          const charBottom = g.charY + CHAR_H;
-
-          if (
-            charRight > obsLeft &&
-            charLeft < obsRight &&
-            charBottom > obsTop
-          ) {
-            g.state = "dead";
-            if (g.score > g.bestScore) g.bestScore = g.score;
-            setGameState("dead");
-            setDisplayBest(g.bestScore);
-          }
-        }
-
-        g.score++;
-        setDisplayScore(g.score);
-      }
-
-      drawScene();
-      rafRef.current = requestAnimationFrame(gameLoop);
-    };
-
-    rafRef.current = requestAnimationFrame(gameLoop);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
-
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="flex gap-6 font-display font-bold text-lg">
+      <div className="flex gap-6 font-display font-bold text-xl">
         <span className="text-primary">Score: {displayScore}</span>
         <span className="text-secondary">Best: {displayBest}</span>
       </div>
-      <div className="relative w-full max-w-[600px]">
-        <canvas
-          ref={canvasRef}
-          data-ocid="jungle_jump.canvas_target"
-          width={CANVAS_W}
-          height={CANVAS_H}
-          className="w-full rounded-2xl border-4 border-border cursor-pointer shadow-lg"
-          onClick={jump}
-          onKeyDown={(e) => {
-            if (e.code === "Space") jump();
-          }}
-          tabIndex={0}
-          role="button"
-          aria-label="Jungle Jump game - click or press Space to jump"
-          style={{ touchAction: "none" }}
-        />
-      </div>
-      {gameState === "dead" && (
-        <button
-          type="button"
-          data-ocid="jungle_jump.restart_button"
-          onClick={jump}
-          className="bg-primary text-white font-display font-bold text-lg px-8 py-3 rounded-2xl shadow-[0_5px_0_0_oklch(0.45_0.22_38)] hover:shadow-[0_3px_0_0_oklch(0.45_0.22_38)] hover:translate-y-[2px] active:shadow-none active:translate-y-[5px] transition-all duration-100 cursor-pointer"
+
+      <div
+        className="relative w-full rounded-3xl overflow-hidden border-4 border-border shadow-2xl cursor-pointer"
+        style={{ height: 360 }}
+        onClick={jump}
+        onKeyDown={(e) => {
+          if (e.key === " ") jump();
+        }}
+      >
+        <Canvas
+          shadows
+          camera={{ position: [0, 3, 10], fov: 60 }}
+          style={{ width: "100%", height: "100%" }}
         >
-          🔄 Play Again!
-        </button>
-      )}
+          <color attach="background" args={["#87CEEB"]} />
+          <ambientLight intensity={0.6} />
+          <directionalLight
+            position={[10, 12, 5]}
+            intensity={1.5}
+            castShadow
+            shadow-mapSize={[1024, 1024]}
+          />
+          <GameScene
+            gameRef={gameRef}
+            onScore={(s) => {
+              setDisplayScore(s);
+              gameRef.current.score = s;
+            }}
+            onStateChange={(s) => {
+              setGameState(s);
+              setDisplayBest(gameRef.current.bestScore);
+            }}
+          />
+        </Canvas>
+        {gameState === "idle" && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 text-white">
+            <div className="text-6xl mb-3">🦁</div>
+            <p className="font-display font-extrabold text-3xl mb-2">
+              Jungle Jump!
+            </p>
+            <p className="font-body text-lg">Tap or press SPACE to start</p>
+          </div>
+        )}
+        {gameState === "dead" && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white">
+            <p className="font-display font-extrabold text-4xl text-red-400 mb-2">
+              💥 Game Over!
+            </p>
+            <p className="font-body text-xl mb-1">
+              Score: {displayScore} · Best: {displayBest}
+            </p>
+            <p className="font-body text-lg mt-2">
+              Tap or press SPACE to restart
+            </p>
+          </div>
+        )}
+      </div>
+
       <p className="font-body text-muted-foreground text-sm text-center">
         🦁 Press{" "}
         <kbd className="bg-muted px-2 py-0.5 rounded font-mono text-xs">

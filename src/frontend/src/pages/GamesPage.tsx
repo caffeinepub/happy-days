@@ -72,11 +72,11 @@ function GameCard({
     >
       {/* Cover */}
       <div
-        className={`bg-gradient-to-br ${game.color} h-40 flex flex-col items-center justify-center relative overflow-hidden`}
+        className={`bg-gradient-to-br ${game.color} h-56 flex flex-col items-center justify-center relative overflow-hidden`}
       >
         <motion.div
-          className="text-8xl drop-shadow-lg"
-          animate={{ y: [0, -8, 0] }}
+          className="text-9xl drop-shadow-lg"
+          animate={{ y: [0, -10, 0] }}
           transition={{
             duration: 2.5,
             repeat: Number.POSITIVE_INFINITY,
@@ -90,15 +90,15 @@ function GameCard({
       </div>
 
       {/* Content */}
-      <div className="p-5">
-        <h3 className="font-display font-extrabold text-2xl text-foreground mb-2">
+      <div className="p-6">
+        <h3 className="font-display font-extrabold text-3xl text-foreground mb-3">
           {game.title}
         </h3>
-        <p className="font-body text-muted-foreground text-sm leading-relaxed mb-2">
+        <p className="font-body text-muted-foreground text-base leading-relaxed mb-3">
           {game.description}
         </p>
         <p
-          className="font-body text-xs mb-4"
+          className="font-body text-sm mb-5"
           style={{ color: game.accentColor }}
         >
           💡 {game.instructions}
@@ -110,7 +110,7 @@ function GameCard({
             e.stopPropagation();
             onPlay(game.id);
           }}
-          className="w-full py-3 rounded-2xl font-display font-extrabold text-lg text-white border-0 transition-all duration-100 cursor-pointer hover:translate-y-[2px] active:translate-y-[5px]"
+          className="w-full py-4 rounded-2xl font-display font-extrabold text-xl text-white border-0 transition-all duration-100 cursor-pointer hover:translate-y-[2px] active:translate-y-[5px]"
           style={{
             backgroundColor: game.accentColor,
             boxShadow: "0 5px 0 0 oklch(0.45 0.22 38)",
@@ -140,20 +140,20 @@ function GameArea({ gameId, onBack }: { gameId: string; onBack: () => void }) {
           type="button"
           data-ocid="games.back_button"
           onClick={onBack}
-          className="flex items-center gap-2 bg-white border-4 border-border px-4 py-2 rounded-2xl font-body font-bold text-foreground hover:border-foreground transition-all hover:-translate-y-0.5 cursor-pointer shadow-sm"
+          className="flex items-center gap-2 bg-white border-4 border-border px-5 py-3 rounded-2xl font-body font-bold text-foreground hover:border-foreground transition-all hover:-translate-y-0.5 cursor-pointer shadow-sm text-lg"
         >
           ← Back to Games
         </button>
-        <div className="flex items-center gap-2">
-          <span className="text-3xl">{game.emoji}</span>
-          <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-foreground">
+        <div className="flex items-center gap-3">
+          <span className="text-4xl">{game.emoji}</span>
+          <h2 className="font-display font-extrabold text-3xl sm:text-4xl text-foreground">
             {game.title}
           </h2>
         </div>
       </div>
 
       {/* Game Area */}
-      <div className="bg-white border-4 border-border rounded-3xl p-6 shadow-lg">
+      <div className="bg-white border-4 border-border rounded-3xl p-8 shadow-lg">
         {gameId === "jungle-jump" && <JungleJump />}
         {gameId === "memory-match" && <MemoryMatch />}
         {gameId === "magic-quiz" && <MagicQuiz />}
@@ -184,15 +184,15 @@ export function GamesPage() {
             >
               {/* Header */}
               <motion.div
-                className="text-center mb-10"
+                className="text-center mb-12"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <h2 className="font-display font-extrabold text-4xl sm:text-6xl mb-3">
+                <h2 className="font-display font-extrabold text-5xl sm:text-7xl mb-4">
                   <span className="rainbow-text">🎮 Play Games!</span>
                 </h2>
-                <p className="font-body text-muted-foreground text-lg">
+                <p className="font-body text-muted-foreground text-xl">
                   Pick a game and start playing right now! No downloads needed!
                   🌟
                 </p>
@@ -201,7 +201,7 @@ export function GamesPage() {
               {/* Game Cards Grid */}
               <div
                 data-ocid="games.list"
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
               >
                 {GAMES.map((game, i) => (
                   <GameCard
@@ -215,12 +215,12 @@ export function GamesPage() {
 
               {/* Fun note */}
               <motion.div
-                className="text-center mt-12 font-body text-muted-foreground"
+                className="text-center mt-14 font-body text-muted-foreground"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
               >
-                <p className="text-lg">More games coming soon! 🚀✨</p>
+                <p className="text-xl">More games coming soon! 🚀✨</p>
               </motion.div>
             </motion.div>
           )}
