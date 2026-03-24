@@ -301,3 +301,11 @@
   z-index: -1;
   border-radius: 1.75rem;
 }
+
+/* Mobile touch improvements */
+button {
+  touch-action: manipulation;
+}
+canvas {
+  touch-action: none;
+}

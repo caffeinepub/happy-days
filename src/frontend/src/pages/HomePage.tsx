@@ -332,10 +332,11 @@ export function HomePage({ onReadStory, onPlayGames }: HomePageProps) {
               <div className="text-5xl sm:text-6xl animate-bounce">🎮</div>
               <div>
                 <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-foreground">
-                  Play Real Games!
+                  25+ Real Games!
                 </h2>
                 <p className="font-body text-muted-foreground">
-                  Jump, match, and quiz — 3 fun games to play right now!
+                  25+ fun games to play right now — action, puzzles, memory &
+                  more!
                 </p>
               </div>
             </div>

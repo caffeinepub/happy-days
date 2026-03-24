@@ -2,6 +2,7 @@ import { Box, Cylinder, Sphere } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type * as THREE from "three";
+import { TouchControls } from "../components/TouchControls";
 
 type GameState = "idle" | "running" | "dead";
 
@@ -323,6 +324,7 @@ export function JungleJump() {
         </kbd>{" "}
         or tap the game to jump over the cacti!
       </p>
+      <TouchControls layout="single" />
     </div>
   );
 }

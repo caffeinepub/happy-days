@@ -1,33 +1,40 @@
 # Happy Days
 
 ## Current State
-The site has a HomePage with stories grid and featured stories, a StoryPage for reading stories, a NavBar, and a Footer. Navigation is controlled via React state in App.tsx (selectedStory determines which page shows). Stories come from backend. The site uses a colorful kid-friendly design with rainbow borders.
+- StoryPage renders a full scrollable page with a cover image, animated paragraphs, and a "The End" card
+- Stories are shown as a static single-page layout; all paragraphs scroll vertically
+- Sparkles and Stars decorations exist but are subtle
+- HomePage shows story cards that open StoryPage
 
 ## Requested Changes (Diff)
 
 ### Add
-- A Games section on the HomePage below the stories section with 3 playable browser mini-games
-- GamesPage component with a game launcher that lets kids pick and play a game
-- 3 mini-games built with HTML Canvas / React state:
-  1. **Jungle Jump** -- side-scrolling endless runner. A character jumps over obstacles by pressing Space or tapping. Score increases over time. Game over on collision.
-  2. **Treasure Memory Match** -- flip-card memory matching game. 12 cards (6 pairs) with treasure-themed emoji icons. Find all pairs to win. Shows move count and time.
-  3. **Magic Kingdom Quiz** -- multiple-choice trivia quiz with 8 kid-friendly questions about fantasy/fairy tale themes. Shows score at end.
-- Nav bar gets a "Games" button alongside the logo area
-- App.tsx routing: add `currentView` state: 'home' | 'story' | 'games' | 'game-detail'
+- Slideshow mode for StoryPage: break each story's content array into individual slides (1-2 paragraphs per slide), navigated with large Left/Right arrow buttons and a page indicator (dots)
+- Smooth sliding animation between story pages (slide left/right transition using AnimatePresence)
+- Confetti burst animation on story start and on "The End" screen
+- Bouncing/floating animated characters (emoji characters: stars, hearts, rainbows) on each slide
+- Rainbow sparkle effects and color bursts between slides
+- More vibrant, happy color scheme on story slides (colorful backgrounds per slide)
+- "The End" screen with big confetti, bouncy stars, and cheerful text animation
+- Touch swipe support for sliding between pages on mobile
 
 ### Modify
-- App.tsx: extend routing to support a games view and individual game view
-- NavBar: add a Games nav button
-- HomePage: add a "Play Games!" section banner linking to the games page
+- StoryPage: replace vertical scroll layout with horizontal slideshow layout
+- Each slide gets a colorful gradient background (rotating through rainbow colors)
+- Navigation arrows are large, colorful, and bouncy
+- Page dots indicator at the bottom of each slide
+- Back button remains at top left
 
 ### Remove
 - Nothing removed
 
 ## Implementation Plan
-1. Create `src/frontend/src/pages/GamesPage.tsx` -- games lobby showing 3 game cards with Play buttons
-2. Create `src/frontend/src/games/JungleJump.tsx` -- canvas-based endless runner
-3. Create `src/frontend/src/games/MemoryMatch.tsx` -- flip card memory game in React
-4. Create `src/frontend/src/games/MagicQuiz.tsx` -- quiz game in React
-5. Create `src/frontend/src/pages/GamePage.tsx` -- wrapper page that renders the selected game
-6. Update `App.tsx` to add games routing and NavBar Games button
-7. Update `HomePage.tsx` to add a Games section/banner
+1. Create a `Confetti` component that spawns animated confetti particles (CSS keyframe animations)
+2. Create a `Slideshow` component that wraps story content and handles slide navigation, swipe gestures, and slide transitions
+3. Update `StoryPage` to split `story.content` into slides (groups of 2 paragraphs) and render via Slideshow
+4. Add colorful per-slide backgrounds cycling through rainbow gradient palette
+5. Add bouncing emoji decorations (stars, hearts, rainbows) that float on each slide
+6. Add confetti burst on slide 1 load and on "The End" final slide
+7. Animate slide transitions using AnimatePresence with x-axis slide direction
+8. Add swipe gesture detection (touch start/end) for mobile navigation
+9. Style navigation arrows as large, rounded, colorful buttons with spring bounce animation
